@@ -22,15 +22,37 @@ const client = new MongoClient(uri, {
 
 async function run(){
     try{
-        const appointmentOptionCollection = client
-          .db("milestoneDoctors")
-          .collection("appointmentOptions");
+        const appointmentOptionCollection = client.db("milestoneDoctors").collection("appointmentOptions");
+        const bookingsCollection = client.db("milestoneDoctors").collection("bookings");
 
+        //Use aggregate to query multiple collection and then merge data;
           app.get("/appointmentOptions", async(req, res) =>{
+            const date = req.query.date;
+            console.log(date);
             const query = {};
             const options = await appointmentOptionCollection.find(query).toArray();
+
+            //get the bookings of the provided date;
+            const bookingQuery = { appointmentDate: date };
+            const alreadyBooked = await bookingsCollection.find(bookingQuery).toArray();
+
+            //code carefully
+            options.forEach(option =>{
+                const optionBooked = alreadyBooked.filter(book => book.treatment === option.name);
+                const bookSlots = optionBooked.map(book => book.slot);
+                const remainingSlots = option.slots.filter(slot => !bookSlots.includes(slot));
+                option.slots = remainingSlots;
+            })
             res.send(options);
           })
+
+          app.post('/bookings', async(req, res) =>{
+            const booking = req.body;
+            
+            const result = await bookingsCollection.insertOne(booking);
+            res.send(result);
+          })
+
 
     }
     finally{
