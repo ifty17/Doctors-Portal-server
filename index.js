@@ -23,7 +23,7 @@ function verifyJWT(req, res, next){
   // console.log("token inside verifyJWT", req.headers.authorization);
   const authHeader = req.headers.authorization;
   if(!authHeader){
-    res.status(401).send('unAuthorized access')
+    res.status(401).send('unauthorized access')
   }
   
   const token = authHeader.split(' ')[1];
@@ -123,6 +123,12 @@ async function run() {
 
     app.get("/bookings", verifyJWT, async (req, res) => {
       const email = req.query.email;
+      const decodedEmail = req.decoded.email;
+
+      if(email !== decodedEmail){
+        return res.status(403).send({message: 'Forbidden access'})
+      }
+
       const query = { email: email };
       const bookings = await bookingsCollection.find(query).toArray();
       res.send(bookings);
